@@ -38,26 +38,35 @@ Para el desarrollo de este ejercicio analítico, se utilizaron datos proveniente
 
 ## 🔬 3. Metodología General
 
-El desarrollo del producto analítico siguió un pipeline estructurado de ciencia de datos:
+El ejercicio analítico conecta directamente el problema de la **desviación y autonomía en la contratación pública local** con los datos abiertos oficiales a través de una metodología estructurada en cuatro fases:
 
 ```
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│   1. Extracción  │ ──► │  2. Limpieza e   │ ──► │  3. Modelado e   │ ──► │ 4. Visualización │
-│  (Supabase/APIs) │     │  Integración     │     │   Cálculo IDC    │     │   (Streamlit UI) │
-└──────────────────┘     └──────────────────┘     └──────────────────┘     └──────────────────┘
+┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐     ┌─────────────────────────┐
+│  1. Ingesta y Limpieza  │ ──► │  2. Disociación FDL vs  │ ──► │   3. Cálculo IDC &      │ ──► │ 4. Análisis Exploratorio│
+│  (Cortes independientes)│     │     Sector Central      │     │ Normalización Demográfica│     │    (PCA & Geoespacial) │
+└─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘     └─────────────────────────┘
 ```
 
-1. **Extracción y Persistencia (`database/connection.py`, `supabase_utils.py`):**  
-   Conexión optimizada a Supabase con mecanismos de almacenamiento en caché (`st.cache_data` con TTL) para optimizar consultas de alto tráfico.
+### 3.1. Ingesta y Tratamiento de Desafíos en Datos Abiertos (`data_sources.py`, `pipeline.py`)
+- **Evitar Duplicidad por Cortes Acumulados:** Cada reporte mensual de Contratistas es un estado acumulado a esa fecha. El pipeline procesa **cortes mensuales independientes** (septiembre, octubre, noviembre y diciembre 2022) sin sumar meses entre sí, evitando inflar valores al duplicar contratos plurianuales o vigentes.
+- **Normalización Textual Rígida:** Se convierten cadenas con diversas codificaciones (`CP850`, `Latin-1`, `UTF-8`) a texto plano sin tildes, caracteres especiales ni prefijos numéricos (`"01 USAQUÉN"` $\rightarrow$ `"USAQUEN"`), mapeándolos contra un catálogo estandarizado de las **20 localidades oficiales de Bogotá D.C.**
+- **Saneamiento Numérico Financiero:** Limpieza automatizada de valores de dinero con formato mixto (convertidor de strings con símbolos de moneda `$`, puntos de millar y comas decimales a `float64`).
 
-2. **Limpieza e Integración (`pipeline.py`, `data_sources.py`):**  
-   Normalización de nombres de localidades, imputación de valores faltantes, conversión de tipos numéricos y filtrado de coordenadas geográficas válidas.
+### 3.2. Disociación Territorial: Fondos Locales vs. Sector Central (`pipeline.py`)
+- **Contratación Total (`total_contratado`):** Se agrupa la contratación del Distrito según la **localidad de domicilio del contratista** (única variable geográfica disponible en la fuente).
+- **Contratación Directa Local (`total_contratado_directo`):** Se filtra el `Sector == 'Localidades'` y se aplica extracción de entidades (`extraer_localidad_de_entidad`) para identificar los recursos ejecutados específicamente por el **Fondo de Desarrollo Local (FDL)** de cada localidad.
+- **Transparencia en Sesgos:** Las entidades del sector central (Salud, Educación, Movilidad, etc.) prestan servicio a nivel distrital y no poseen residencia de contratista única; por ello se procesan en una tabla independiente sin forzarlas arbitrariamente dentro de una localidad ajena.
 
-3. **Modelado y Análisis (`geo_data.py`, `poblacion_data.py`, `scikit-learn`):**  
-   Cálculo numérico del IDC, ponderación poblacional por localidad y segmentación de riesgo presupuestal.
+### 3.3. Formulación del IDC y Normalización Poblacional (`pipeline.py`, `poblacion_data.py`)
+- **Fórmula del Índice de Desviación Contractual (IDC):**
+  $$\text{IDC} = \min\left(1.0, \frac{\text{total\_contratado\_directo (Fondo Local)}}{\text{total\_contratado (Todos los sectores)}}\right)$$
+  Un IDC cercano a 1.0 refleja una alta proporción de gasto canalizado a través del propio Fondo Local. Para evitar que casos extremos distorsionen los gráficos, el valor se acota a $1.0$, preservando la versión sin acotar en `idc_raw`.
+- **Tratamiento de Outliers (Sumapaz):** Debido a su carácter eminentemente rural y baja densidad de contratistas domiciliados, Sumapaz genera un IDC matemático atípico, por lo cual se categoriza como *outlier suplementario* para no sesgar las comparativas urbanas.
+- **Normalización Demográfica (Per Cápita):** Con base en el censo y proyecciones de población distrital 2005–2035 (SDP), se derivan métricas por cada 1.000 habitantes (`contratos_por_1000_hab`, `contratado_per_capita`, `postulantes_tnp_por_1000_hab`), garantizando comparaciones equitativas entre localidades de gran tamaño (Kennedy, Suba) y pequeñas (La Candelaria).
 
-4. **Visualización Interactiva (`app.py`, `components/`, `charts.py`):**  
-   Despliegue de un tablero de control en Streamlit equipado con filtros por vigencia y localidad, gráficos de Plotly y mapas de calor espaciales interactivos en PyDeck.
+### 3.4. Análisis Multivariado y Visualización (`charts.py`, `app.py`)
+- **Reducción de Dimensionalidad (PCA):** Estandarización (`StandardScaler`) y Análisis de Componentes Principales (`PCA(n_components=2)`) con `scikit-learn` para identificar clústeres de localidades con patrones similares de contratación y vectores de carga (*loadings*).
+- **Análisis Geoespacial Interactivo:** Integración de mapas de coropletas (polígonos cartográficos oficiales SDP/IDECA) y mapas de burbujas en centroides para evaluar diferencias territoriales (p. ej. disparidades en el eje Norte vs. Sur).
 
 ---
 
