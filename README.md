@@ -72,54 +72,26 @@ El ejercicio analítico conecta directamente el problema de la **desviación y a
 
 ## 🛠️ 4. Instrucciones de Ejecución
 
-Sigue este paso a paso para reproducir la solución en tu entorno local.
-
 ### Prerrequisitos
 - Python **3.10+** (Recomendado: Python 3.11)
 - Git
 
-### Paso 1: Clonar el Repositorio
-```bash
-git clone https://github.com/intidie/datajam-bogota-2026-idc.git
-cd datajam-bogota-2026-idc
-```
+### ⚡ Ejecución Rápida (3 Pasos)
 
-### Paso 2: Crear y Activar el Entorno Virtual
-* **En Linux/macOS:**
-  ```bash
-  python3 -m venv venv
-  source venv/bin/activate
-  ```
-* **En Windows (PowerShell):**
-  ```powershell
-  python -m venv venv
-  .\venv\Scripts\Activate.ps1
-  ```
-
-### Paso 3: Instalar Dependencias
 ```bash
-pip install --upgrade pip
+# 1. Clonar el repositorio e ingresar a la carpeta
+git clone https://github.com/intidie/datajam-bogota-2026-idc.git && cd datajam-bogota-2026-idc
+
+# 2. Instalar dependencias requeridas
 pip install -r requirements.txt
+
+# 3. Lanzar la aplicación interactiva
+streamlit run app.py
 ```
 
-### Paso 4: Configurar Variables de Entorno (Credenciales de Supabase)
-Crea un archivo `.env` en la raíz del proyecto basándote en la plantilla `.env.example`:
-```env
-SUPABASE_URL=https://tu-proyecto-id.supabase.co
-SUPABASE_KEY=tu-clave-anon-de-supabase
-```
+La interfaz se abrirá automáticamente en tu navegador web en `http://localhost:8501`.
 
-### Paso 5: Ejecutar la Aplicación / Scripts Analíticos
-* **Para ejecutar el tablero de control interactivo (Streamlit):**
-  ```bash
-  streamlit run app.py
-  ```
-  La interfaz se abrirá automáticamente en tu navegador web en `http://localhost:8501`.
-
-* **Para ejecutar el pipeline de datos independiente:**
-  ```bash
-  python pipeline.py
-  ```
+*(Opcional: Si deseas guardar o sincronizar con Supabase, configura las credenciales `SUPABASE_URL` y `SUPABASE_KEY` en tu archivo `.env` o en `st.secrets`).*
 
 ---
 
