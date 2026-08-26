@@ -38,7 +38,9 @@ def _interpolar_color(valor_normalizado: float, color_bajo=(255, 247, 236), colo
     r = color_bajo[0] + (color_alto[0] - color_bajo[0]) * valor_normalizado
     g = color_bajo[1] + (color_alto[1] - color_bajo[1]) * valor_normalizado
     b = color_bajo[2] + (color_alto[2] - color_bajo[2]) * valor_normalizado
-    return f"background-color: rgb({r:.0f}, {g:.0f}, {b:.0f})"
+    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    text_color = "#000000" if luminance > 0.5 else "#FFFFFF"
+    return f"background-color: rgb({r:.0f}, {g:.0f}, {b:.0f}); color: {text_color};"
 
 
 def _gradiente_columna(serie: pd.Series):
@@ -86,7 +88,7 @@ def _bar_localidad(data, columna: str, etiqueta: str, color_scale: str, ascendin
         color_continuous_scale=color_scale, template=TEMPLATE,
         labels={columna: etiqueta, "localidad_limpia": ""},
     )
-    fig.update_layout(height=380, xaxis_tickangle=-40, showlegend=False, margin=dict(l=10, r=10, t=10, b=10))
+    fig.update_layout(height=380, xaxis_tickangle=-40, showlegend=False, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -268,14 +270,14 @@ def analisis_componentes_principales(idc_data):
             fig.add_annotation(
                 x=loadings[i, 0] * escala, y=loadings[i, 1] * escala,
                 ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
-                showarrow=True, arrowhead=3, arrowcolor="#264653", arrowwidth=1.5,
+                showarrow=True, arrowhead=3, arrowcolor="#E76F51", arrowwidth=1.5,
             )
             fig.add_annotation(
                 x=loadings[i, 0] * escala * 1.15, y=loadings[i, 1] * escala * 1.15,
                 text=COLUMNAS_CANDIDATAS.get(col_name, col_name), showarrow=False,
-                font=dict(size=11, color="#264653"),
+                font=dict(size=11, color="#E76F51"),
             )
-        fig.update_layout(height=520, margin=dict(l=10, r=10, t=10, b=10))
+        fig.update_layout(height=520, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, use_container_width=True)
     with col2:
         fig_var = px.bar(
@@ -283,7 +285,7 @@ def analisis_componentes_principales(idc_data):
             color=["Componente 1", "Componente 2"], color_discrete_sequence=["#E76F51", "#F4A261"], text=var_explicada,
         )
         fig_var.update_traces(texttemplate="%{text:.0f}%", textposition="outside")
-        fig_var.update_layout(height=520, showlegend=False, yaxis_title="% de informacion explicada", xaxis_title="", margin=dict(l=10, r=10, t=10, b=10))
+        fig_var.update_layout(height=520, showlegend=False, yaxis_title="% de informacion explicada", xaxis_title="", margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig_var, use_container_width=True)
 
     _explica(
@@ -313,7 +315,7 @@ def grafico_ranking(idc_data):
         text="idc", labels={"idc": "IDC", "localidad_limpia": ""},
     )
     fig.update_traces(texttemplate="%{text:.2f}", textposition="outside")
-    fig.update_layout(height=560, margin=dict(l=10, r=10, t=10, b=10))
+    fig.update_layout(height=560, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig, use_container_width=True)
 
     _explica(
@@ -334,6 +336,7 @@ def grafico_comparativo(idc_data):
     fig.update_layout(
         barmode="group", template=TEMPLATE, height=480, xaxis_tickangle=-40,
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1), margin=dict(l=10, r=10, t=30, b=10),
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -358,7 +361,7 @@ def grafico_talento(idc_data, tabla_entidad):
             color_continuous_scale="Blues", template=TEMPLATE,
             labels={"num_postulantes": "Personas contratadas via TNP", "localidad_limpia": ""},
         )
-        fig.update_layout(height=420, xaxis_tickangle=-40, margin=dict(l=10, r=10, t=10, b=10))
+        fig.update_layout(height=420, xaxis_tickangle=-40, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig, use_container_width=True)
         _explica(
             "Muestra cuantas personas contrato cada Fondo de Desarrollo Local a traves "
@@ -377,7 +380,7 @@ def grafico_talento(idc_data, tabla_entidad):
             color="num_contratistas_tnp", color_continuous_scale="Teal", template=TEMPLATE,
             labels={"num_contratistas_tnp": "Personas contratadas via TNP", "entidad": ""},
         )
-        fig2.update_layout(height=480, margin=dict(l=10, r=10, t=10, b=10), yaxis={"categoryorder": "total ascending"})
+        fig2.update_layout(height=480, margin=dict(l=10, r=10, t=10, b=10), yaxis={"categoryorder": "total ascending"}, paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
         st.plotly_chart(fig2, use_container_width=True)
         st.caption(
             "Estas entidades (salud, movilidad, cultura, etc.) no se pueden asignar a "
@@ -442,10 +445,10 @@ def mapa_geografico(idc_data, geojson_obj, corte_label: str):
             hover_data={"idc": True, "idc_mapa": False, "latitud": False, "longitud": False},
             labels={"idc_mapa": titulo_color},
         )
-        fig.update_traces(textposition="top center", textfont=dict(size=10, color="#264653"))
+        fig.update_traces(textposition="top center", textfont=dict(size=10))
         modo = "circulos por localidad (no se pudo cargar el mapa de poligonos oficial)"
 
-    fig.update_layout(height=620, margin=dict(l=0, r=0, t=0, b=0), coloraxis_colorbar_title=titulo_color, dragmode="pan")
+    fig.update_layout(height=620, margin=dict(l=0, r=0, t=0, b=0), coloraxis_colorbar_title=titulo_color, dragmode="pan", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
     st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
     st.caption(f"Modo de mapa activo: {modo}. Corte mostrado: {corte_label}.")
 

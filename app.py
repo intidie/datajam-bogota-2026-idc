@@ -35,24 +35,21 @@ st.set_page_config(page_title="IDC Bogota", page_icon=None, layout="wide")
 st.markdown(
     """
     <style>
-    .stApp { background-color: #FAFAF7; }
-    h1, h2, h3 { color: #2B2118; }
     [data-testid="stMetric"] {
-        background: #FFFFFF;
-        border: 1px solid #EFE6DA;
+        background-color: var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
         border-radius: 14px;
         padding: 14px 16px 10px 16px;
         box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     }
-    [data-testid="stMetricLabel"] { color: #8A7B68; font-size: 0.85rem; }
-    [data-testid="stExpander"] { border-radius: 12px; border: 1px solid #EFE6DA; }
+    [data-testid="stMetricLabel"] { font-size: 0.85rem; }
+    [data-testid="stExpander"] { border-radius: 12px; border: 1px solid rgba(128, 128, 128, 0.2); }
     div.stButton > button, div.stDownloadButton > button {
-        border-radius: 10px; border: 1px solid #E76F51; color: #E76F51; background: #FFFFFF;
+        border-radius: 10px; border: 1px solid #E76F51; color: #E76F51; background-color: transparent;
     }
-    div.stButton > button:hover, div.stDownloadButton > button:hover { background: #E76F51; color: #FFFFFF; }
-    section[data-testid="stSidebar"] { background-color: #FBF3EA; }
+    div.stButton > button:hover, div.stDownloadButton > button:hover { background-color: #E76F51; color: #FFFFFF; }
     .stTabs [data-baseweb="tab-list"] { gap: 6px; }
-    .stTabs [data-baseweb="tab"] { border-radius: 10px 10px 0 0; padding: 8px 14px; background-color: #F3EBDF; }
+    .stTabs [data-baseweb="tab"] { border-radius: 10px 10px 0 0; padding: 8px 14px; background-color: var(--secondary-background-color); }
     </style>
     """,
     unsafe_allow_html=True,
