@@ -23,19 +23,16 @@ Para diagnosticar y visualizar este fenómeno a nivel distrital, desarrollamos e
 
 ## 📊 2. Fuentes de Datos Utilizadas
 
-El análisis se alimenta de conjuntos de datos públicos oficiales provenientes del **[Portal de Datos Abiertos de Bogotá](https://datosabiertos.bogota.gov.co/)** (integrados a través de SECOP y fuentes distritales) y alojados en **Supabase**:
+Para el desarrollo de este ejercicio analítico, se utilizaron datos provenientes del **[Portal de Datos Abiertos de Bogotá](https://datosabiertos.bogota.gov.co/)**. Aunque inicialmente se exploraron rangos históricos más amplios, el análisis final se delimitó al periodo del **año 2022** utilizando los siguientes conjuntos de datos:
 
-1. **Conjunto de Datos de Contratación Pública Distrital (SECOP)**  
-   * **Descripción:** Contiene el registro detallado de los contratos firmados por entidades distritales, modalidades de contratación y montos ejecutados.  
-   * **Aporte al Análisis:** Proporciona los datos del `total_contratado_directo` y la vigencia fiscal (`year`) para el cálculo del IDC.
+1. **Contratos Distritales (Contratistas):**  
+   * Se utilizaron los cortes mensuales correspondientes a **septiembre, octubre y noviembre de 2022** (`contratistas-2022-09.csv`, `contratistas-2022-10.csv`, `contratistas-2022-11.csv`).
 
-2. **Conjunto de Datos de Presupuesto Anual por Localidad**  
-   * **Descripción:** Información presupuestal desagregada por plan de desarrollo local y asignación previa de recursos.  
-   * **Aporte al Análisis:** Proporciona los valores de `total_presupuesto_planeado`, sirviendo como línea base de comparación frente a la ejecución real.
+2. **Banco de Proveedores - Talento no Palanca:**  
+   * De las bases exploradas entre septiembre y diciembre, se seleccionó como insumo final únicamente el archivo de **diciembre de 2022** (`tnp-diciembre.csv`).
 
-3. **Conjunto de Datos Geoespaciales y Demográficos de Bogotá (Cartografía Oficial)**  
-   * **Descripción:** Capa cartográfica con delimitaciones de localidades, coordenadas de referencia (`latitud`, `longitud`) y proyecciones poblacionales.  
-   * **Aporte al Análisis:** Permite la normalización del IDC en función de la población local y la generación de capas de mapas de calor interactivos en PyDeck.
+3. **Proyección de Población por Localidad:**  
+   * Se integró el archivo de proyecciones y retroproyecciones de población distrital 2005-2035 (`202503_localidad_proyeccion_retroproyeccion_poblacion_2005_2035.ods`) para permitir la normalización e interpretación territorial de los datos.
 
 ---
 
