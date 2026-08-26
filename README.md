@@ -49,7 +49,7 @@ El ejercicio analítico conecta directamente el problema de la **desviación y a
 
 ### 3.1. Ingesta y Tratamiento de Desafíos en Datos Abiertos (`data_sources.py`, `pipeline.py`)
 - **Evitar Duplicidad por Cortes Acumulados:** Cada reporte mensual de Contratistas es un estado acumulado a esa fecha. El pipeline procesa **cortes mensuales independientes** (septiembre, octubre, noviembre y diciembre 2022) sin sumar meses entre sí, evitando inflar valores al duplicar contratos plurianuales o vigentes.
-- **Normalización Textual Rígida:** Se convierten cadenas con diversas codificaciones (`CP850`, `Latin-1`, `UTF-8`) a texto plano sin tildes, caracteres especiales ni prefijos numéricos (`"01 USAQUÉN"` $\rightarrow$ `"USAQUEN"`), mapeándolos contra un catálogo estandarizado de las **20 localidades oficiales de Bogotá D.C.**
+- **Normalización Textual Rígida:** Se convierten cadenas con diversas codificaciones (`CP850`, `Latin-1`, `UTF-8`) a texto plano sin tildes, caracteres especiales ni prefijos numéricos (`"01 USAQUÉN"` → `"USAQUEN"`), mapeándolos contra un catálogo estandarizado de las **20 localidades oficiales de Bogotá D.C.**
 - **Saneamiento Numérico Financiero:** Limpieza automatizada de valores de dinero con formato mixto (convertidor de strings con símbolos de moneda `$`, puntos de millar y comas decimales a `float64`).
 
 ### 3.2. Disociación Territorial: Fondos Locales vs. Sector Central (`pipeline.py`)
@@ -59,8 +59,8 @@ El ejercicio analítico conecta directamente el problema de la **desviación y a
 
 ### 3.3. Formulación del IDC y Normalización Poblacional (`pipeline.py`, `poblacion_data.py`)
 - **Fórmula del Índice de Desviación Contractual (IDC):**
-  $$\text{IDC} = \min\left(1.0, \frac{\text{total\_contratado\_directo (Fondo Local)}}{\text{total\_contratado (Todos los sectores)}}\right)$$
-  Un IDC cercano a 1.0 refleja una alta proporción de gasto canalizado a través del propio Fondo Local. Para evitar que casos extremos distorsionen los gráficos, el valor se acota a $1.0$, preservando la versión sin acotar en `idc_raw`.
+  $$\text{IDC} = \min\left(1.0, \frac{\text{Total Contratado Directo (Fondo Local)}}{\text{Total Contratado (Todos los sectores)}}\right)$$
+  Un IDC cercano a 1.0 refleja una alta proporción de gasto canalizado a través del propio Fondo Local. Para evitar que casos extremos distorsionen los gráficos, el valor se acota a 1.0, preservando la versión sin acotar en `idc_raw`.
 - **Tratamiento de Outliers (Sumapaz):** Debido a su carácter eminentemente rural y baja densidad de contratistas domiciliados, Sumapaz genera un IDC matemático atípico, por lo cual se categoriza como *outlier suplementario* para no sesgar las comparativas urbanas.
 - **Normalización Demográfica (Per Cápita):** Con base en el censo y proyecciones de población distrital 2005–2035 (SDP), se derivan métricas por cada 1.000 habitantes (`contratos_por_1000_hab`, `contratado_per_capita`, `postulantes_tnp_por_1000_hab`), garantizando comparaciones equitativas entre localidades de gran tamaño (Kennedy, Suba) y pequeñas (La Candelaria).
 
