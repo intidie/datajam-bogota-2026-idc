@@ -1,22 +1,22 @@
 """
 data_sources.py
 ----------------
-Descarga de las fuentes oficiales de Datos Abiertos de Bogota.
+Descarga de las fuentes oficiales de Datos Abiertos de Bogotá.
 
-Nota metodologica importante (corregida tras revision): los archivos
-mensuales de Contratistas del Distrito son "cortes" (fotografias del
+Nota metodológica importante (corregida tras revisión): los archivos
+mensuales de Contratistas del Distrito son "cortes" (fotografías del
 estado acumulado a esa fecha), no movimientos nuevos de cada mes. Sumar
 varios cortes cuenta varias veces los mismos contratos que siguen
-vigentes en mas de un corte, inflando artificialmente los totales. Por
-eso esta version NO suma meses: se analiza siempre UN SOLO corte a la
-vez (por defecto, el de diciembre, el mas completo del año).
+vigentes en más de un corte, inflando artificialmente los totales. Por
+eso esta versión NO suma meses: se analiza siempre UN SOLO corte a la
+vez (por defecto, el de diciembre, el más completo del año).
 
-Fuente 1: Caracterizacion de los Contratistas del Distrito (SIDEAP/DASCD),
+Fuente 1: Caracterización de los Contratistas del Distrito (SIDEAP/DASCD),
           4 cortes mensuales (septiembre a diciembre de 2022).
 Fuente 2: Banco de Proveedores - Talento no Palanca, 4 cortes mensuales.
           Es un reporte por ENTIDAD (no trae localidad de residencia por
           persona); ver pipeline.procesar_talento().
-Fuente 3 (proxy de presupuesto/ejecucion local): subconjunto de la
+Fuente 3 (proxy de presupuesto/ejecución local): subconjunto de la
           Fuente 1 donde Sector == "Localidades" (Fondos de Desarrollo
           Local), del mismo corte seleccionado.
 """

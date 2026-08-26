@@ -2,12 +2,12 @@
 geo_data.py
 -----------
 Centroides de las 20 localidades (respaldo) y polígonos oficiales de la
-Secretaria Distrital de Planeacion / IDECA, obtenidos en vivo via el
-servicio ArcGIS REST publico de la Unidad de Catastro Distrital.
+Secretaría Distrital de Planeación / IDECA, obtenidos en vivo vía el
+servicio ArcGIS REST público de la Unidad de Catastro Distrital.
 
 Si el servicio no responde (por ejemplo, sin salida a internet), el mapa
-cae automaticamente al modo de puntos de calor por centroide, sin romper
-la aplicacion.
+cae automáticamente al modo de puntos de calor por centroide, sin romper
+la aplicación.
 """
 
 import json
