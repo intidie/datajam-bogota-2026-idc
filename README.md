@@ -10,6 +10,13 @@
 
 En el marco de la gestión pública del Distrito Capital, la eficiencia y transparencia en la asignación del gasto público representan retos fundamentales para garantizar el desarrollo equitativo de la ciudad. El fenómeno urbano abordado en este proyecto es la **discrepancia espacial y temporal entre la planificación presupuestal y la ejecución de la contratación directa** en las 20 localidades de Bogotá D.C.
 
+La contratación a nivel local en Bogotá (que se encarga de las vías de los barrios, los parques zonales, dotación de colegios y seguridad local) ha sufrido históricamente de altas tasas de desviación. Esto representa un problema crítico por cuatro razones fundamentales:
+
+* **Violación del Principio de Planeación:** Una alta desviación demuestra que los "estudios previos" (la fase donde la alcaldía local planea qué va a hacer y cuánto cuesta) quedaron mal hechos. Si un contrato para arreglar una calle requiere tres prórrogas y una adición de dinero a los pocos meses de iniciar, significa que no se calcularon bien los materiales, las redes de acueducto subterráneas o los tiempos.
+* **Foco y Riesgo de Corrupción:** Las adiciones contractuales son una de las zonas más grises de la contratación pública. Al modificar un contrato existente, se le entrega dinero directamente al mismo contratista sin tener que abrir una nueva licitación pública o concurso, lo que a veces se utiliza para desviar recursos públicos.
+* **Ineficiencia y "Elefantes Blancos":** La desviación en tiempo se traduce en obras abandonadas o retrasadas durante años. Para la ciudadanía, esto significa calles rotas, polisombras que generan inseguridad en el barrio y parques inhabilitados.
+* **Desgaste Administrativo y Presupuestal:** Los Fondos de Desarrollo Local tienen presupuestos limitados. Cuando el dinero debe usarse para cubrir los sobrecostos (adiciones) de obras mal planeadas del año anterior, la localidad se queda sin recursos para financiar nuevos proyectos sociales o de infraestructura.
+
 Para diagnosticar y visualizar este fenómeno a nivel distrital, desarrollamos el **Índice de Desviación Contractual (IDC)**. Este indicador analítico cuantifica las variaciones críticas entre el `total_presupuesto_planeado` y el `total_contratado_directo`. A través de un enfoque cuantitativo y geoespacial, el modelo identifica patrones de riesgo contractual, concentración atípica de recursos y niveles de ejecución por localidad, permitiendo a tomadores de decisión y a la ciudadanía monitorear el desempeño del gasto distrital.
 
 ---
