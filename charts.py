@@ -346,17 +346,15 @@ def analisis_exploratorio(idc_data, filas_sin_localidad: dict):
 # ------------------------------------------------------------------
 
 def analisis_componentes_principales(idc_data):
-    st.subheader("Análisis de componentes principales (PCA)", anchor=False, divider="orange")
+    st.subheader("Análisis de Componentes Principales (PCA)", anchor=False, divider="orange")
     st.markdown(
-        "Cada localidad tiene varios números distintos (cuánto contrató, cuántos "
-        "contratos, cuánto ejecutó su fondo local...). El PCA junta toda esa "
-        "información en un solo mapa de 2 dimensiones, para ver qué localidades se "
-        "parecen entre sí y cuáles se salen del grupo."
+        "El PCA sintetiza múltiples dimensiones numéricas en un solo plano bi-dimensional (PC1 vs. PC2), "
+        "permitiendo visualizar qué localidades comparten patrones contractuales y cuáles se diferencian marcadamente."
     )
 
     utiles, _ = _columnas_utiles(idc_data, COLUMNAS_CANDIDATAS)
     columnas_pca = list(utiles.keys())
-    base = idc_data.dropna(subset=columnas_pca) if columnas_pca else idc_data.iloc[0:0]
+    base = idc_data.dropna(subset=columnas_pca).copy() if columnas_pca else idc_data.iloc[0:0]
 
     if len(columnas_pca) < 3 or len(base) < 4:
         st.info("No hay suficientes variables o localidades con datos completos en este corte para calcular un PCA confiable.")
@@ -371,53 +369,176 @@ def analisis_componentes_principales(idc_data):
     var_explicada = pca.explained_variance_ratio_ * 100
 
     df_scores = pd.DataFrame({
-        "PC1": scores[:, 0], "PC2": scores[:, 1],
+        "PC1": scores[:, 0],
+        "PC2": scores[:, 1],
         "localidad_limpia": base["localidad_limpia"].values,
         "idc": base["idc"].values if "idc" in base.columns else 0,
+        "total_contratado": base["total_contratado"].values if "total_contratado" in base.columns else 0,
+        "total_contratado_directo": base["total_contratado_directo"].values if "total_contratado_directo" in base.columns else 0,
+        "num_contratos": base["num_contratos"].values if "num_contratos" in base.columns else 0,
     })
 
-    col1, col2 = st.columns([2, 1])
-    with col1:
-        fig = px.scatter(
-            df_scores, x="PC1", y="PC2", text="localidad_limpia",
-            color="idc", color_continuous_scale=COLOR_SCALE, template=TEMPLATE, labels={"idc": "IDC"},
-        )
-        fig.update_traces(textposition="top center", marker=dict(size=14, line=dict(width=1, color="white")))
+    # ALGORITMO ANTI-COLISIÓN DE ETIQUETAS E INTELLIGENT POSITIONS
+    coords = df_scores[["PC1", "PC2"]].values
+    N = len(coords)
+    annotations = []
 
-        escala = max(np.abs(scores).max() * 0.9, 0.01)
+    # Radio de densidad poblada en el plano PCA
+    R_threshold = 0.45
+
+    for i in range(N):
+        x_i, y_i = coords[i, 0], coords[i, 1]
+        name_i = df_scores.iloc[i]["localidad_limpia"].title()
+
+        # Calcular distancias a otros puntos
+        dists = np.linalg.norm(coords - coords[i], axis=1)
+        close_mask = (dists < R_threshold) & (dists > 0)
+        num_close = np.sum(close_mask)
+
+        if num_close > 0:
+            # Calcular centro de masa de vecinos cercanos
+            c_neighbors = np.mean(coords[close_mask], axis=0)
+            vec = coords[i] - c_neighbors
+            norm = np.linalg.norm(vec)
+            if norm == 0:
+                vec = np.array([np.cos(i * 2 * np.pi / N), np.sin(i * 2 * np.pi / N)])
+            else:
+                vec = vec / norm
+
+            # Desplazamiento inteligente de la etiqueta (en píxeles)
+            ax_offset = float(vec[0] * 38)
+            ay_offset = float(-vec[1] * 38)
+
+            annotations.append(dict(
+                x=x_i, y=y_i,
+                text=f"<b>{name_i}</b>",
+                showarrow=True,
+                arrowhead=1,
+                arrowsize=0.8,
+                arrowwidth=1.0,
+                arrowcolor="rgba(180, 180, 180, 0.7)",
+                ax=ax_offset,
+                ay=ay_offset,
+                font=dict(size=10.5, color="#FFFFFF"),
+                bgcolor="rgba(25, 25, 25, 0.85)",
+                bordercolor="rgba(200, 200, 200, 0.5)",
+                borderwidth=1,
+                borderpad=3,
+            ))
+        else:
+            # Punto aislado: etiqueta limpia arriba
+            annotations.append(dict(
+                x=x_i, y=y_i,
+                text=f"<b>{name_i}</b>",
+                showarrow=True,
+                arrowhead=1,
+                arrowsize=0.8,
+                arrowwidth=0.8,
+                arrowcolor="rgba(180, 180, 180, 0.5)",
+                ax=0,
+                ay=-24,
+                font=dict(size=11, color="#FFFFFF"),
+                bgcolor="rgba(25, 25, 25, 0.85)",
+                bordercolor="rgba(200, 200, 200, 0.4)",
+                borderwidth=1,
+                borderpad=3,
+            ))
+
+    col1, col2 = st.columns([2.2, 1])
+    with col1:
+        # Gráfico Scatter Plot con paleta de alto contraste 'Viridis' y puntos destacados
+        fig = px.scatter(
+            df_scores,
+            x="PC1",
+            y="PC2",
+            color="idc",
+            color_continuous_scale="Viridis",
+            template=TEMPLATE,
+            labels={"idc": "IDC", "PC1": "Componente Principal 1", "PC2": "Componente Principal 2"},
+            custom_data=["localidad_limpia", "idc", "total_contratado", "total_contratado_directo", "num_contratos"],
+        )
+
+        fig.update_traces(
+            marker=dict(size=20, line=dict(width=1.5, color="#FFFFFF"), opacity=0.95),
+            hovertemplate=(
+                "<b>%{customdata[0]}</b><br>"
+                "• <b>IDC:</b> %{customdata[1]:.2%}<br>"
+                "• <b>Total Contratado:</b> $%{customdata[2]:,.0f}<br>"
+                "• <b>Ejecutado FDL:</b> $%{customdata[3]:,.0f}<br>"
+                "• <b>Contratos:</b> %{customdata[4]:,.0f}<br>"
+                "• <b>PC1:</b> %{x:.2f} | <b>PC2:</b> %{y:.2f}"
+                "<extra></extra>"
+            ),
+        )
+
+        # Agregar etiquetas anti-colisión
+        for ann in annotations:
+            fig.add_annotation(**ann)
+
+        # VECTORES DE VARIABLES (LOADINGS) CON ETIQUETAS DESPLAZADAS Y CONTRASTE
+        escala = max(np.abs(scores).max() * 0.85, 0.01)
         loadings = pca.components_.T
+
+        angle_offsets = [-12, 12, -15, 15, 0, 18]
         for i, col_name in enumerate(columnas_pca):
+            lx, ly = loadings[i, 0] * escala, loadings[i, 1] * escala
             fig.add_annotation(
-                x=loadings[i, 0] * escala, y=loadings[i, 1] * escala,
+                x=lx, y=ly,
                 ax=0, ay=0, xref="x", yref="y", axref="x", ayref="y",
-                showarrow=True, arrowhead=3, arrowcolor="#E76F51", arrowwidth=1.5,
+                showarrow=True, arrowhead=3, arrowcolor="#FF5722", arrowwidth=2.5,
             )
+            # Etiqueta desplazada perpendicularmente
             fig.add_annotation(
-                x=loadings[i, 0] * escala * 1.15, y=loadings[i, 1] * escala * 1.15,
-                text=COLUMNAS_CANDIDATAS.get(col_name, col_name), showarrow=False,
-                font=dict(size=11, color="#E76F51"),
+                x=lx * 1.14, y=ly * 1.14 + (0.05 * (i % 2 - 0.5)),
+                text=f"<b>{COLUMNAS_CANDIDATAS.get(col_name, col_name)}</b>",
+                showarrow=False,
+                font=dict(size=11, color="#FF7043"),
+                bgcolor="rgba(0,0,0,0.5)",
+                borderpad=2,
             )
-        fig.update_layout(height=520, margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
-        st.plotly_chart(fig, use_container_width=True)
+
+        # Ejes de referencia cero (cuadrantes)
+        fig.update_xaxes(zeroline=True, zerolinecolor="rgba(150, 150, 150, 0.4)", zerolinewidth=1.5)
+        fig.update_yaxes(zeroline=True, zerolinecolor="rgba(150, 150, 150, 0.4)", zerolinewidth=1.5)
+
+        fig.update_layout(
+            height=580,
+            margin=dict(l=15, r=15, t=15, b=15),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            coloraxis_colorbar_title="IDC",
+            dragmode="pan",
+        )
+        st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
+
     with col2:
         fig_var = px.bar(
-            x=["Componente 1", "Componente 2"], y=var_explicada, template=TEMPLATE,
-            color=["Componente 1", "Componente 2"], color_discrete_sequence=["#E76F51", "#F4A261"], text=var_explicada,
+            x=["Componente 1", "Componente 2"],
+            y=var_explicada,
+            template=TEMPLATE,
+            color=["Componente 1", "Componente 2"],
+            color_discrete_sequence=["#2A9D8F", "#E76F51"],
+            text=var_explicada,
         )
-        fig_var.update_traces(texttemplate="%{text:.0f}%", textposition="outside")
-        fig_var.update_layout(height=520, showlegend=False, yaxis_title="% de información explicada", xaxis_title="", margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        fig_var.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+        fig_var.update_layout(
+            height=580,
+            showlegend=False,
+            yaxis_title="% de Información Explicada",
+            xaxis_title="",
+            margin=dict(l=10, r=10, t=15, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
         st.plotly_chart(fig_var, use_container_width=True)
 
     _explica(
-        f"Entre los dos ejes de este mapa se resume el **{var_explicada.sum():.0f}%** de "
-        "toda la información de las localidades. Las que quedan **cerca** en el gráfico "
-        "se parecen en su forma de contratar; las que quedan **lejos** son distintas. "
-        "Las flechas muestran hacia dónde 'jala' cada variable.",
-        "Se estandarizan (media 0, desviación 1) las columnas útiles con `StandardScaler` "
-        "y se ajusta un `PCA(n_components=2)` de scikit-learn sobre las localidades con "
-        "datos completos. `PC1`/`PC2` son los puntajes de cada localidad; las flechas son "
-        "los `pca.components_` (loadings) de cada variable original, escalados para verse "
-        "junto a los puntos (biplot). El panel derecho muestra `explained_variance_ratio_`.",
+        f"Entre los dos ejes del plano PCA se resume el **{var_explicada.sum():.1f}%** de toda la variabilidad contractual de las localidades. "
+        "Las localidades agrupadas cerca en el gráfico comparten perfiles semejantes; las alejadas (como Sumapaz o Engativá/Suba) difieren por su masa de contratación o nivel de IDC. "
+        "Las flechas naranja-rojas representan los vectores de cada variable (*loadings*), indicando en qué dirección influye cada indicador.",
+        "**Detalle técnico:** Se estandarizan las variables con `StandardScaler` (Z-score) y se computa la descomposición en valores singulares (SVD) con `PCA(n_components=2)`. "
+        "Las etiquetas del scatter plot implementan un algoritmo anti-colisión por repulsión vectorial de centro de masa local con líneas guía (*leader lines*). "
+        "La paleta `Viridis` garantiza máximo contraste lumínico sobre fondos oscuros.",
     )
 
 
