@@ -59,8 +59,10 @@ El ejercicio analítico conecta directamente el problema de la **desviación y a
 
 ### 3.3. Formulación del IDC y Normalización Poblacional (`pipeline.py`, `poblacion_data.py`)
 - **Fórmula del Índice de Desviación Contractual (IDC):**
-  $$\text{IDC} = \min\left(1.0, \frac{\text{Total Contratado Directo (Fondo Local)}}{\text{Total Contratado (Todos los sectores)}}\right)$$
-  Un IDC cercano a 1.0 refleja una alta proporción de gasto canalizado a través del propio Fondo Local. Para evitar que casos extremos distorsionen los gráficos, el valor se acota a 1.0, preservando la versión sin acotar en `idc_raw`.
+
+$$\text{IDC} = \min\left(1.0, \frac{\text{Total Contratado Directo (Fondo Local)}}{\text{Total Contratado (Todos los sectores)}}\right)$$
+
+Un IDC cercano a 1.0 refleja una alta proporción de gasto canalizado a través del propio Fondo Local. Para evitar que casos extremos distorsionen los gráficos, el valor se acota a 1.0, preservando la versión sin acotar en `idc_raw`.
 - **Tratamiento de Outliers (Sumapaz):** Debido a su carácter eminentemente rural y baja densidad de contratistas domiciliados, Sumapaz genera un IDC matemático atípico, por lo cual se categoriza como *outlier suplementario* para no sesgar las comparativas urbanas.
 - **Normalización Demográfica (Per Cápita):** Con base en el censo y proyecciones de población distrital 2005–2035 (SDP), se derivan métricas por cada 1.000 habitantes (`contratos_por_1000_hab`, `contratado_per_capita`, `postulantes_tnp_por_1000_hab`), garantizando comparaciones equitativas entre localidades de gran tamaño (Kennedy, Suba) y pequeñas (La Candelaria).
 
