@@ -395,62 +395,101 @@ def grafico_talento(idc_data, tabla_entidad):
 
 def mapa_geografico(idc_data, geojson_obj, corte_label: str):
     st.subheader("Mapa interactivo del IDC en Bogotá", anchor=False, divider="orange")
-    st.caption("Puedes hacer zoom con la rueda del mouse (o pellizcar en el celular) y arrastrar para moverte por el mapa.")
+    st.caption("Explora la distribución espacial del IDC y los indicadores de normalización demográfica per cápita.")
 
     data = idc_data.copy()
 
     tiene_poblacion = "contratado_per_capita" in data.columns and data["poblacion_total"].sum() > 0
-    metrica_color = "idc"
-    if tiene_poblacion:
-        metrica_color = st.radio(
-            "Colorear el mapa por",
-            options=["idc", "contratado_per_capita"],
-            format_func=lambda m: "IDC" if m == "idc" else "Contratado per cápita ($/habitante)",
-            horizontal=True,
+
+    col_opt1, col_opt2 = st.columns(2)
+
+    with col_opt1:
+        opciones_metrica = {"idc": "IDC (Índice de Descentralización)"}
+        if tiene_poblacion:
+            opciones_metrica["contratado_per_capita"] = "Contratado per cápita ($/hab)"
+            opciones_metrica["contratos_por_1000_hab"] = "Contratos por 1.000 hab"
+            opciones_metrica["postulantes_tnp_por_1000_hab"] = "Talento no Palanca por 1.000 hab"
+
+        metrica_color = st.selectbox(
+            "Métrica de Normalización Demográfica (Per Cápita)",
+            options=list(opciones_metrica.keys()),
+            index=1 if tiene_poblacion else 0,
+            format_func=lambda m: opciones_metrica[m],
+        )
+
+    with col_opt2:
+        tipo_mapa = st.selectbox(
+            "Estilo de visualización del mapa",
+            options=["calor", "poligonos", "burbujas"],
+            format_func=lambda t: {
+                "calor": "Mapa de Calor Espacial (Density Heatmap)",
+                "poligonos": "Polígonos Oficiales (Coropletas SDP/IDECA)",
+                "burbujas": "Círculos en Centroides (Scatter Mapbox)",
+            }[t],
         )
 
     if metrica_color == "contratado_per_capita":
         data["idc_mapa"] = data["contratado_per_capita"].fillna(0)
         rango_color = [0, data["idc_mapa"].max() or 1]
         titulo_color = "$/hab"
+    elif metrica_color == "contratos_por_1000_hab":
+        data["idc_mapa"] = data["contratos_por_1000_hab"].fillna(0)
+        rango_color = [0, data["idc_mapa"].max() or 1]
+        titulo_color = "Contratos / 1k hab"
+    elif metrica_color == "postulantes_tnp_por_1000_hab":
+        data["idc_mapa"] = data["postulantes_tnp_por_1000_hab"].fillna(0)
+        rango_color = [0, data["idc_mapa"].max() or 1]
+        titulo_color = "TNP / 1k hab"
     else:
         data["idc_mapa"] = data["idc"].fillna(0).clip(upper=1.0)
         rango_color = [0, 1.0]
         titulo_color = "IDC"
+
     fig = None
 
-    if geojson_obj is not None:
+    if tipo_mapa == "calor":
+        fig = px.density_mapbox(
+            data, lat="latitud", lon="longitud", z="idc_mapa",
+            radius=45, zoom=9.8, center={"lat": 4.65, "lon": -74.1},
+            mapbox_style="open-street-map", color_continuous_scale=COLOR_SCALE,
+            hover_name="localidad_limpia", hover_data={"idc": True, "idc_mapa": True, "latitud": False, "longitud": False},
+            labels={"idc_mapa": titulo_color},
+        )
+        modo = "Mapa de calor espacial por centroides (Density Heatmap)"
+
+    elif tipo_mapa == "poligonos" and geojson_obj is not None:
         try:
             fig = px.choropleth_mapbox(
                 data, geojson=geojson_obj, locations="localidad_limpia",
                 featureidkey="properties.localidad_limpia",
                 color="idc_mapa", range_color=rango_color, color_continuous_scale=COLOR_SCALE,
-                mapbox_style="open-street-map", zoom=9.3, center={"lat": 4.65, "lon": -74.1}, opacity=0.8,
-                hover_name="localidad_limpia", hover_data={"idc": True, "idc_mapa": False},
+                mapbox_style="open-street-map", zoom=9.8, center={"lat": 4.65, "lon": -74.1}, opacity=0.8,
+                hover_name="localidad_limpia", hover_data={"idc": True, "idc_mapa": True},
                 labels={"idc_mapa": titulo_color},
             )
-            modo = "polígonos oficiales (IDECA / Secretaría Distrital de Planeación)"
+            modo = "Polígonos oficiales (IDECA / Secretaría Distrital de Planeación)"
         except Exception:
             fig = None
 
     if fig is None:
-        # Mapa de burbujas por localidad: siempre funciona (solo necesita
-        # latitud/longitud de los centroides) y es mucho más legible que un
-        # mapa de calor difuso con solo 20 puntos.
         fig = px.scatter_mapbox(
             data, lat="latitud", lon="longitud", color="idc_mapa",
             size=np.maximum(data["total_contratado"], 1), color_continuous_scale=COLOR_SCALE,
-            range_color=rango_color, size_max=38, zoom=9.3, center={"lat": 4.65, "lon": -74.1},
+            range_color=rango_color, size_max=38, zoom=9.8, center={"lat": 4.65, "lon": -74.1},
             mapbox_style="open-street-map", text="localidad_limpia", hover_name="localidad_limpia",
-            hover_data={"idc": True, "idc_mapa": False, "latitud": False, "longitud": False},
+            hover_data={"idc": True, "idc_mapa": True, "latitud": False, "longitud": False},
             labels={"idc_mapa": titulo_color},
         )
         fig.update_traces(textposition="top center", textfont=dict(size=10))
-        modo = "círculos por localidad (no se pudo cargar el mapa de polígonos oficial)"
+        modo = "Círculos por localidad en centroides"
 
-    fig.update_layout(height=620, margin=dict(l=0, r=0, t=0, b=0), coloraxis_colorbar_title=titulo_color, dragmode="pan", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    fig.update_layout(
+        height=620, margin=dict(l=0, r=0, t=0, b=0),
+        coloraxis_colorbar_title=titulo_color, dragmode="pan",
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+    )
     st.plotly_chart(fig, use_container_width=True, config={"scrollZoom": True})
-    st.caption(f"Modo de mapa activo: {modo}. Corte mostrado: {corte_label}.")
+    st.caption(f"Modo de mapa activo: {modo}. Métrica seleccionada: {opciones_metrica[metrica_color]}. Corte mostrado: {corte_label}.")
 
     st.subheader("¿Qué nos dice el mapa? (Análisis geográfico)", anchor=False, divider="orange")
     referencia = idc_data.dropna(subset=["idc", "latitud"]) if "latitud" in idc_data.columns else idc_data.dropna(subset=["idc"])
