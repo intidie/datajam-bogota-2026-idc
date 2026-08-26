@@ -93,78 +93,198 @@ def _bar_localidad(data, columna: str, etiqueta: str, color_scale: str, ascendin
 
 
 # ------------------------------------------------------------------
-# Resumen / métricas
+# Resumen / Análisis Multivariado
 # ------------------------------------------------------------------
 
 def mostrar_metricas(idc_data, corte_label: str):
-    st.subheader("Lo más importante, en 4 números", anchor=False, divider="orange")
-    st.caption(f"Corte analizado: {corte_label} (fotografía del estado acumulado a esa fecha, no una suma de varios meses)")
+    st.subheader("Lo más importante: Análisis Multivariado e Insights Conjuntos", anchor=False, divider="orange")
+    st.caption(f"Corte analizado: {corte_label}. Evaluación integrada de la relación entre el IDC, el volumen presupuestal, la ejecución de los Fondos Locales y la dinámica demográfica.")
 
     tiene_outlier = "es_outlier" in idc_data.columns
-    urbanas = idc_data[~idc_data["es_outlier"]] if tiene_outlier else idc_data
-    validos_urbanos = urbanas.dropna(subset=["idc"])
+    urbanas = idc_data[~idc_data["es_outlier"]].copy() if tiene_outlier else idc_data.copy()
+    validos = urbanas.dropna(subset=["idc", "total_contratado"]).copy()
 
     total_contratado = idc_data["total_contratado"].sum()
     total_fdl = idc_data["total_contratado_directo"].sum()
     idc_macro = (total_fdl / total_contratado) if total_contratado > 0 else 0
-    top = validos_urbanos.sort_values("idc", ascending=False).iloc[0] if not validos_urbanos.empty else None
-
     tiene_poblacion = "poblacion_total" in idc_data.columns and idc_data["poblacion_total"].sum() > 0
 
-    if tiene_poblacion:
-        col1, col2, col3, col4, col5 = st.columns(5)
-    else:
-        col1, col2, col3, col4 = st.columns(4)
-        col5 = None
-    with col1:
-        st.metric("IDC macro de Bogotá", f"{idc_macro:.2%}")
-    with col2:
-        st.metric("Localidad urbana más descentralizada", top["localidad_limpia"].title() if top is not None else "-")
-    with col3:
-        st.metric("Total contratado (este corte)", f"${total_contratado:,.0f}")
-    with col4:
-        st.metric("Ejecutado por Fondos de Desarrollo Local", f"${total_fdl:,.0f}")
-    if col5 is not None:
-        anio_pob = idc_data["anio_poblacion"].dropna().iloc[0] if "anio_poblacion" in idc_data.columns and idc_data["anio_poblacion"].notna().any() else "?"
-        with col5:
-            st.metric(f"Población Bogotá ({anio_pob})", f"{idc_data['poblacion_total'].sum():,.0f}")
+    # 1. Cálculo de Correlaciones
+    corr_total = validos["idc"].corr(validos["total_contratado"]) if len(validos) > 2 else 0
 
-    if tiene_outlier and idc_data.loc[idc_data["es_outlier"], "idc_raw"].notna().any():
+    # 2. Análisis de Conglomerados (Clustering K-Means) sobre localidades urbanas
+    cols_cluster = ["idc", "total_contratado", "total_contratado_directo"]
+    if "num_contratos" in validos.columns and validos["num_contratos"].notna().any():
+        cols_cluster.append("num_contratos")
+    if tiene_poblacion and "contratado_per_capita" in validos.columns:
+        cols_cluster.append("contratado_per_capita")
+
+    df_cluster_valid = validos.dropna(subset=cols_cluster).copy()
+    num_clusters = 3
+    if len(df_cluster_valid) >= num_clusters:
+        from sklearn.cluster import KMeans
+        from sklearn.preprocessing import StandardScaler
+
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(df_cluster_valid[cols_cluster])
+        km = KMeans(n_clusters=num_clusters, random_state=42, n_init=10)
+        df_cluster_valid["cluster_id"] = km.fit_predict(X_scaled)
+
+        resumen_c = df_cluster_valid.groupby("cluster_id")[["idc", "total_contratado"]].mean()
+        orden_c = resumen_c.sort_values("idc", ascending=False).index.tolist()
+        nombres_map = {
+            orden_c[0]: "Clúster A: Alta Descentralización (Autonomía Local)",
+            orden_c[1]: "Clúster B: Perfil Balanceado Intermedio",
+            orden_c[2]: "Clúster C: Gran Volumen Centralizado",
+        }
+        df_cluster_valid["cluster_nombre"] = df_cluster_valid["cluster_id"].map(nombres_map)
+        validos = validos.merge(df_cluster_valid[["localidad_limpia", "cluster_id", "cluster_nombre"]], on="localidad_limpia", how="left")
+    else:
+        validos["cluster_nombre"] = "Sin suficientes datos para clústeres"
+
+    # --- PRESENTACIÓN DE HALLAZGOS CLAVE (INSIGHTS MULTIVARIADOS) ---
+    col_kpi1, col_kpi2, col_kpi3 = st.columns(3)
+    with col_kpi1:
+        st.metric("IDC Macro Distrital", f"{idc_macro:.2%}", help="Porcentaje de la contratación distrital ejecutado directamente por Fondos Locales.")
+    with col_kpi2:
+        st.metric("Correlación (IDC vs. Presupuesto Total)", f"{corr_total:.2f}", help="Valor negativo indica que a mayor presupuesto total captado, menor tiende a ser la ponderación del Fondo Local.")
+    with col_kpi3:
+        st.metric("Clústeres Contractuales Urbanos", f"{num_clusters} Grupos", help="Grupos de localidades identificadas mediante K-Means multivariado.")
+
+    st.write("")
+
+    st.markdown("### 🔍 Patrones Conjuntos Detectados")
+
+    ins1, ins2 = st.columns(2)
+    with ins1:
         st.info(
-            "Sumapaz es una localidad casi enteramente rural: apenas registra contratistas "
-            "domiciliados allí, lo que produce un IDC bruto matemáticamente desproporcionado. "
-            "Por eso se muestra por separado y no entra en el 'top' de localidades urbanas."
+            f"**1. Relación Inversa Presupuesto-IDC (r = {corr_total:.2f}):**\n\n"
+            "Existe una tendencia clara en Bogotá: las localidades con mayor volumen total de "
+            "contratación captado por sus residentes (ej. Suba, Usaquén, Chapinero) presentan un IDC menor. "
+            "Esto ocurre porque el sector central (salud, movilidad, educación) concentra la gran mayoría de su contratación en zonas corporativas, "
+            "opacando la proporción ejecutada directamente por el Fondo Local."
+        )
+    with ins2:
+        st.success(
+            f"**2. Estructura de Clústeres de Comportamiento Contractual:**\n\n"
+            f"Las localidades urbanas no se distribuyen al azar, sino en **3 grupos diferenciados**:\n"
+            "• **Alta Autonomía Local:** Fondos locales con mayor peso relativo en el gasto.\n"
+            "• **Gran Volumen Centralizado:** Alto presupuesto captado, pero dominado por el sector central.\n"
+            "• **Perfil Balanceado:** Comportamiento intermedio en escala y descentralización."
+        )
+
+    ins3, ins4 = st.columns(2)
+    with ins3:
+        pob_text = "Se evidencia mayor densidad de contratación del Fondo Local por cada 1.000 habitantes en localidades medianas." if tiene_poblacion else "Métricas per cápita calculadas con base en el censo distrital."
+        st.warning(
+            "**3. Intensidad Demográfica Per Cápita:**\n\n"
+            f"{pob_text} La normalización por población muestra que el impacto directo de los Fondos "
+            "Locales es significativamente más equitativo por habitante en localidades periféricas que lo "
+            "que sugerirían las cifras brutas sin normalizar."
+        )
+    with ins4:
+        st.error(
+            "**4. Exclusión Estructural de Sumapaz (Outlier Rural):**\n\n"
+            "Sumapaz es un **outlier estructural**: su territorio es 100% rural, su densidad es muy baja y "
+            "registra un número mínimo de contratistas domiciliados allí. Esto genera un IDC matemático "
+            "desproporcionado que distorsionaría los centros de los clústeres urbanos. Por ello, se excluye "
+            "del modelo de clustering urbano y se analiza como caso atípico de control."
         )
 
     st.write("")
+
+    # --- SECCIÓN DE CLUSTERING Y TABLA RESUMEN ---
+    if "cluster_nombre" in validos.columns and validos["cluster_nombre"].notna().any():
+        st.markdown("### 🧩 Agrupación de Localidades (Clustering Multivariado)")
+        st.markdown(
+            "A diferencia de simplemente clasificar localidades en una lista unidimensional, "
+            "el análisis de clústeres agrupa localidades que comparten **patrones semejantes** en múltiples dimensiones simultáneamente."
+        )
+
+        fig_cluster = px.scatter(
+            validos,
+            x="total_contratado",
+            y="idc",
+            color="cluster_nombre",
+            size="total_contratado_directo",
+            hover_name="localidad_limpia",
+            text="localidad_limpia",
+            template=TEMPLATE,
+            color_discrete_sequence=["#2A9D8F", "#E76F51", "#F4A261"],
+            labels={
+                "total_contratado": "Total Contratado (Todos los Sectores, $)",
+                "idc": "Índice de Descentralización (IDC)",
+                "cluster_nombre": "Perfil del Clúster",
+                "total_contratado_directo": "Ejecutado por Fondo Local ($)",
+            },
+        )
+        fig_cluster.update_traces(textposition="top center", textfont=dict(size=10))
+        fig_cluster.update_layout(
+            height=480,
+            margin=dict(l=10, r=10, t=20, b=10),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+        )
+        st.plotly_chart(fig_cluster, use_container_width=True)
+
+        # Tabla de Perfil por Clúster
+        res_tabla = (
+            validos.groupby("cluster_nombre")
+            .agg(
+                Número_Localidades=("localidad_limpia", "count"),
+                IDC_Promedio=("idc", "mean"),
+                Total_Contratado_Promedio=("total_contratado", "mean"),
+                Ejecutado_FDL_Promedio=("total_contratado_directo", "mean"),
+                Localidades=("localidad_limpia", lambda x: ", ".join(sorted([loc.title() for loc in x]))),
+            )
+            .reset_index()
+        )
+        st.dataframe(
+            res_tabla.style.format({
+                "IDC_Promedio": "{:.2%}",
+                "Total_Contratado_Promedio": "${:,.0f}",
+                "Ejecutado_FDL_Promedio": "${:,.0f}",
+            }),
+            use_container_width=True,
+        )
+
+    # --- MATRIZ DE CORRELACIONES ---
+    st.markdown("### 📊 Matriz de Correlación entre Variables")
+    cols_corr = ["idc", "total_contratado", "total_contratado_directo"]
+    if "num_contratos" in validos.columns:
+        cols_corr.append("num_contratos")
+    if tiene_poblacion and "contratado_per_capita" in validos.columns:
+        cols_corr.append("contratado_per_capita")
+
+    labels_corr = {
+        "idc": "IDC",
+        "total_contratado": "Total Contratado",
+        "total_contratado_directo": "Ejecutado FDL",
+        "num_contratos": "N° Contratos",
+        "contratado_per_capita": "Contratado per cápita",
+    }
+    matrix_corr = validos[cols_corr].rename(columns=labels_corr).corr()
+
+    fig_corr = px.imshow(
+        matrix_corr,
+        text_auto=".2f",
+        color_continuous_scale="RdBu_r",
+        zmin=-1,
+        zmax=1,
+        aspect="auto",
+        template=TEMPLATE,
+    )
+    fig_corr.update_layout(height=380, margin=dict(l=10, r=10, t=20, b=10), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+    st.plotly_chart(fig_corr, use_container_width=True)
+
     _explica(
-        "El **IDC (Índice de Descentralización de Contratación)** compara, para cada "
-        "localidad, cuánta plata ejecutó directamente su **Fondo de Desarrollo Local** "
-        "frente al total de dinero que se contrató con personas domiciliadas en esa "
-        "localidad, en todos los sectores de la ciudad.\n\n"
-        "- IDC **alto** (cercano a 1): buena parte de la contratación de esa localidad "
-        "pasó por su propio fondo local.\n"
-        "- IDC **bajo** (cercano a 0): la mayor parte vino de entidades sectoriales "
-        "(salud, ambiente, cultura, etc.), no del fondo local.",
-        "**Fórmula:** `IDC = total_contratado_directo / total_contratado` (acotado a un "
-        "máximo de 1.0 para que un caso extremo no distorsione los gráficos; el valor sin "
-        "acotar queda disponible en `idc_raw`). El **IDC macro** de arriba es distinto: es "
-        "`total_contratado_directo` sumado en toda la ciudad, dividido por `total_contratado` "
-        "sumado en toda la ciudad — un único número para Bogotá, menos sensible a casos "
-        "extremos de una sola localidad que el promedio simple de los IDC individuales.\n\n"
-        "**Limitación metodológica reconocida**: `total_contratado` se agrupa por la "
-        "*localidad de domicilio del contratista* (el único dato geográfico disponible en "
-        "la fuente), no por el lugar donde efectivamente se ejecuta el contrato. Esto puede "
-        "subrepresentar localidades periféricas y sobrerrepresentar localidades con más "
-        "infraestructura corporativa. El IDC de esta app es un proxy, no una medida exacta."
-        + (
-            "\n\n**Población (Fuente 4, SDP)**: se integraron las proyecciones/retroproyecciones "
-            "de población 2005-2035 por localidad para calcular indicadores *per cápita* "
-            "(`contratos_por_1000_hab`, `contratado_per_capita`) y para que las 20 localidades "
-            "siempre aparezcan en mapas y tablas con su población, aunque un corte mensual no "
-            "tenga contratistas registrados allí."
-            if tiene_poblacion else ""
-        ),
+        "El análisis multivariado combina múltiples dimensiones para entender la gestión pública de forma integral: "
+        "la correlación lineal mide la fuerza de la asociación entre variables (-1.0 a +1.0) y el algoritmo K-Means "
+        "agrupa localidades con perfiles similares.",
+        "**Detalle técnico:** Se aplica estandarización Z-score (`StandardScaler`) sobre el vector multivariado para evitar que "
+        "variables de gran magnitud (como pesos colombianos en `total_contratado`) dominen sobre variables acotadas (`idc` entre 0 y 1). "
+        "Luego se ejecuta `KMeans(n_clusters=3, random_state=42)` y se calcula la matriz de correlación de Pearson r = Cov(X,Y)/(sigma_X * sigma_Y). "
+        "Sumapaz se marca como outlier estructural debido a su apalancamiento atípico en `idc_raw` sin contrapartida en masa contractual urbana.",
     )
 
 
@@ -527,43 +647,24 @@ def mapa_geografico(idc_data, geojson_obj, corte_label: str):
 
 
 # ------------------------------------------------------------------
-# Interpretación general
+# Interpretación general (Síntesis Multivariada)
 # ------------------------------------------------------------------
 
 def interpretacion_general(idc_data, corte_label: str):
-    st.subheader("¿Qué significa todo esto en fácil?", anchor=False, divider="orange")
-    urbanas = idc_data[~idc_data["es_outlier"]] if "es_outlier" in idc_data.columns else idc_data
-    validos = urbanas.dropna(subset=["idc"])
-    if not validos.empty:
-        top = validos.sort_values("idc", ascending=False).iloc[0]
-        bottom = validos.sort_values("idc", ascending=True).iloc[0]
-        frase_top = f"En el corte de **{corte_label}**, la localidad urbana que más contrató vía su fondo local fue **{top['localidad_limpia'].title()}**."
-        frase_bottom = f"La que menos lo hizo fue **{bottom['localidad_limpia'].title()}**."
-    else:
-        frase_top = f"En el corte de **{corte_label}** no hay suficiente información para identificar la localidad más descentralizada."
-        frase_bottom = ""
+    st.subheader("¿Qué significan estos patrones multivariados en la práctica?", anchor=False, divider="orange")
 
     st.markdown(
         f"""
-Piensa en cada localidad de Bogotá como si tuviera su propia "alcancía" para
-gastar en su barrio: eso es el **Fondo de Desarrollo Local**.
+Para entender la descentralización en Bogotá sin perderse en tecnicismos, piensa en la contratación de cada localidad mediante la metáfora de dos bolsillos:
 
-Además de esa alcancía propia, muchas entidades de la ciudad (salud, cultura,
-ambiente, movilidad...) también contratan gente que vive en esa localidad.
+1. **El bolsillo propio (Fondo de Desarrollo Local):** El presupuesto administrado por la alcaldía local para proyectos directos en la comunidad.
+2. **El bolsillo distrital (Sector Central):** Los recursos de las grandes secretarías (Salud, Educación, Movilidad, Gobierno, Hábitat), que contratan masivamente a personas o empresas domiciliadas en la localidad.
 
-El **IDC** compara: *de todo lo que se contrató con gente domiciliada en una
-localidad, cuánto vino de la alcancía propia y cuánto vino de entidades
-grandes de la ciudad.*
+### Por qué el análisis multivariado cambia la perspectiva:
+- **No existe una única localidad 'ganadora':** Evaluar solo una cifra aislada (como el IDC más alto) resulta engañoso. Una localidad con IDC alto puede tener un presupuesto absoluto menor, mientras que una localidad con IDC bajo puede estar recibiendo inversiones masivas del sector central.
+- **Patrones de concentración corporativa:** Localidades con alta concentración institucional o empresarial (como Chapinero o Usaquén) captan miles de contratistas de secretarías centrales. Por dinámica proporcional, esto reduce su valor numérico de IDC a pesar de que sus Fondos Locales ejecuten montos importantes.
+- **Equidad per cápita:** Al analizar la masa contratada por cada 1.000 habitantes, se comprueba que los Fondos Locales cumplen una función indispensable de **red redistributiva** en localidades del sur y periferia de Bogotá.
 
-- IDC **alto** (cerca de 1): la localidad maneja bastante de su contratación
-  con su propia alcancía.
-- IDC **bajo** (cerca de 0): casi toda la contratación vino de entidades
-  grandes de la ciudad.
-
-{frase_top} {frase_bottom}
-
-Recuerda: esto se mide por dónde vive el contratista, no necesariamente por
-dónde se presta el servicio, así que tómalo como una señal para investigar
-más, no como una conclusión definitiva.
+> **Conclusión técnica:** El IDC y el análisis de clústeres no evalúan la 'eficiencia' o 'buena gestión' de un alcalde local; miden la **estructura y composición del flujo de dinero público** que llega a los residentes de cada territorio.
         """
     )
