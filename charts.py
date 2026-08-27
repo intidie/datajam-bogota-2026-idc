@@ -636,7 +636,7 @@ def grafico_talento(idc_data, tabla_entidad):
 
 def mapa_geografico(idc_data, geojson_obj, corte_label: str):
     st.subheader("Mapa interactivo del IDC en Bogotá", anchor=False, divider="orange")
-    st.caption("Explora la distribución espacial del IDC y los indicadores de normalización demográfica per cápita.")
+    st.caption("Explora la distribución espacial del IDC, el gasto ejecutado en la propia localidad y los indicadores per cápita.")
 
     data = idc_data.copy()
 
@@ -645,16 +645,20 @@ def mapa_geografico(idc_data, geojson_obj, corte_label: str):
     col_opt1, col_opt2 = st.columns(2)
 
     with col_opt1:
-        opciones_metrica = {"idc": "IDC (Índice de Descentralización)"}
+        opciones_metrica = {
+            "idc": "IDC (Índice de Descentralización)",
+            "ejecutado_fdl": "Contratos mejor ejecutados por localidad ($ Gasto FDL)",
+            "total_contratado": "Monto Total Contratado (Todos los sectores)",
+        }
         if tiene_poblacion:
             opciones_metrica["contratado_per_capita"] = "Contratado per cápita ($/hab)"
             opciones_metrica["contratos_por_1000_hab"] = "Contratos por 1.000 hab"
             opciones_metrica["postulantes_tnp_por_1000_hab"] = "Talento no Palanca por 1.000 hab"
 
         metrica_color = st.selectbox(
-            "Métrica de Normalización Demográfica (Per Cápita)",
+            "Métrica de representación espacial (Mapa de calor)",
             options=list(opciones_metrica.keys()),
-            index=1 if tiene_poblacion else 0,
+            index=0,
             format_func=lambda m: opciones_metrica[m],
         )
 
@@ -669,7 +673,15 @@ def mapa_geografico(idc_data, geojson_obj, corte_label: str):
             }[t],
         )
 
-    if metrica_color == "contratado_per_capita":
+    if metrica_color == "ejecutado_fdl":
+        data["idc_mapa"] = data["total_contratado_directo"].fillna(0)
+        rango_color = [0, data["idc_mapa"].max() or 1]
+        titulo_color = "Gasto FDL ($)"
+    elif metrica_color == "total_contratado":
+        data["idc_mapa"] = data["total_contratado"].fillna(0)
+        rango_color = [0, data["idc_mapa"].max() or 1]
+        titulo_color = "Total ($)"
+    elif metrica_color == "contratado_per_capita":
         data["idc_mapa"] = data["contratado_per_capita"].fillna(0)
         rango_color = [0, data["idc_mapa"].max() or 1]
         titulo_color = "$/hab"
@@ -693,8 +705,9 @@ def mapa_geografico(idc_data, geojson_obj, corte_label: str):
             data, lat="latitud", lon="longitud", z="idc_mapa",
             radius=45, zoom=9.8, center={"lat": 4.65, "lon": -74.1},
             mapbox_style="open-street-map", color_continuous_scale=COLOR_SCALE,
-            hover_name="localidad_limpia", hover_data={"idc": True, "idc_mapa": True, "latitud": False, "longitud": False},
-            labels={"idc_mapa": titulo_color},
+            hover_name="localidad_limpia",
+            hover_data={"idc": True, "total_contratado_directo": ":$,.0f", "total_contratado": ":$,.0f", "idc_mapa": False, "latitud": False, "longitud": False},
+            labels={"idc_mapa": titulo_color, "total_contratado_directo": "Ejecutado FDL ($)", "total_contratado": "Total Contratado ($)", "idc": "IDC"},
         )
         modo = "Mapa de calor espacial por centroides (Density Heatmap)"
 
@@ -705,8 +718,9 @@ def mapa_geografico(idc_data, geojson_obj, corte_label: str):
                 featureidkey="properties.localidad_limpia",
                 color="idc_mapa", range_color=rango_color, color_continuous_scale=COLOR_SCALE,
                 mapbox_style="open-street-map", zoom=9.8, center={"lat": 4.65, "lon": -74.1}, opacity=0.8,
-                hover_name="localidad_limpia", hover_data={"idc": True, "idc_mapa": True},
-                labels={"idc_mapa": titulo_color},
+                hover_name="localidad_limpia",
+                hover_data={"idc": True, "total_contratado_directo": ":$,.0f", "total_contratado": ":$,.0f", "idc_mapa": False},
+                labels={"idc_mapa": titulo_color, "total_contratado_directo": "Ejecutado FDL ($)", "total_contratado": "Total Contratado ($)", "idc": "IDC"},
             )
             modo = "Polígonos oficiales (IDECA / Secretaría Distrital de Planeación)"
         except Exception:
@@ -718,8 +732,8 @@ def mapa_geografico(idc_data, geojson_obj, corte_label: str):
             size=np.maximum(data["total_contratado"], 1), color_continuous_scale=COLOR_SCALE,
             range_color=rango_color, size_max=38, zoom=9.8, center={"lat": 4.65, "lon": -74.1},
             mapbox_style="open-street-map", text="localidad_limpia", hover_name="localidad_limpia",
-            hover_data={"idc": True, "idc_mapa": True, "latitud": False, "longitud": False},
-            labels={"idc_mapa": titulo_color},
+            hover_data={"idc": True, "total_contratado_directo": ":$,.0f", "total_contratado": ":$,.0f", "idc_mapa": False, "latitud": False, "longitud": False},
+            labels={"idc_mapa": titulo_color, "total_contratado_directo": "Ejecutado FDL ($)", "total_contratado": "Total Contratado ($)", "idc": "IDC"},
         )
         fig.update_traces(textposition="top center", textfont=dict(size=10))
         modo = "Círculos por localidad en centroides"
