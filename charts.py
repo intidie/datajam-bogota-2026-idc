@@ -153,7 +153,7 @@ def mostrar_metricas(idc_data, corte_label: str):
 
     st.write("")
 
-    st.markdown("### 🔍 Patrones Conjuntos Detectados")
+    st.markdown("### Patrones Conjuntos Detectados")
 
     ins1, ins2 = st.columns(2)
     with ins1:
@@ -195,7 +195,7 @@ def mostrar_metricas(idc_data, corte_label: str):
 
     # --- SECCIÓN DE CLUSTERING Y TABLA RESUMEN ---
     if "cluster_nombre" in validos.columns and validos["cluster_nombre"].notna().any():
-        st.markdown("### 🧩 Agrupación de Localidades (Clustering Multivariado)")
+        st.markdown("### Agrupación de Localidades (Clustering Multivariado)")
         st.markdown(
             "A diferencia de simplemente clasificar localidades en una lista unidimensional, "
             "el análisis de clústeres agrupa localidades que comparten **patrones semejantes** en múltiples dimensiones simultáneamente."
@@ -249,7 +249,7 @@ def mostrar_metricas(idc_data, corte_label: str):
         )
 
     # --- MATRIZ DE CORRELACIONES ---
-    st.markdown("### 📊 Matriz de Correlación entre Variables")
+    st.markdown("### Matriz de Correlación entre Variables")
     cols_corr = ["idc", "total_contratado", "total_contratado_directo"]
     if "num_contratos" in validos.columns:
         cols_corr.append("num_contratos")
